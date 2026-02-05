@@ -210,10 +210,16 @@ if tabs == "■ Panel de KPIs":
             title="<b>Tendencia de Recaudación 2020-2024: Salud Fiscal del Quinquenio</b>",
             xaxis_title="<b>Año</b>",
             yaxis_title="<b>Millones de Dólares ($)</b>",
-            height=450,
+            height=500,
             hovermode='x unified',
             template='plotly_white',
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(
+                tickmode='linear',
+                tick0=2020,
+                dtick=1,
+                tickformat='d'  # Formato entero sin separadores
+            )
         )
         
         st.plotly_chart(fig, use_container_width=True)

@@ -163,7 +163,8 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             xaxis_title="Año",
             yaxis_title="Recaudación (Millones $)",
             height=400,
-            hovermode='x unified'
+            hovermode='x unified',
+            xaxis=dict(tickformat='d')  # Sin separadores de miles
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -180,7 +181,10 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             color_continuous_scale='Viridis'
         )
         
-        fig.update_layout(height=400)
+        fig.update_layout(
+            height=400,
+            xaxis=dict(tickformat='d')  # Sin separadores de miles
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # Tabla resumen
