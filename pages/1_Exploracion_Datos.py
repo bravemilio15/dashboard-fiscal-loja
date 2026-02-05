@@ -108,7 +108,7 @@ if 'FLAG_ES_CERO' in df.columns:
         )
         fig.update_traces(textposition='inside', textinfo='percent+label')
         fig.update_layout(height=400, showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de barras
@@ -123,7 +123,7 @@ if 'FLAG_ES_CERO' in df.columns:
         )
         fig.update_traces(texttemplate='%{text:,}', textposition='outside')
         fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     if ratio > 3:
         st.warning("⚠️ Dataset desbalanceado (clase mayoritaria > 3x)")
@@ -167,7 +167,7 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             xaxis=dict(tickformat='d')  # Sin separadores de miles
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de barras con cantidad de registros
@@ -185,14 +185,14 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             height=400,
             xaxis=dict(tickformat='d')  # Sin separadores de miles
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Tabla resumen
     st.markdown("### Resumen Anual")
     resumen_display = recaudacion_anual[['ANIO', 'sum_millones', 'count']].copy()
     resumen_display.columns = ['Año', 'Recaudación Total (Millones $)', 'Número de Registros']
     resumen_display['Recaudación Total (Millones $)'] = resumen_display['Recaudación Total (Millones $)'].round(2)
-    st.dataframe(resumen_display, use_container_width=True, hide_index=True)
+    st.dataframe(resumen_display, width='stretch', hide_index=True)
 
 st.markdown("---")
 
@@ -223,7 +223,7 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         
         fig.update_traces(texttemplate='%{text}%', textposition='outside')
         fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de pastel para top 5
@@ -235,12 +235,12 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             hole=0.4
         )
         fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Mostrar imagen guardada del notebook
     fig_path = Path(__file__).parent.parent / "Fig_7_Canton.png"
     if fig_path.exists():
-        st.image(str(fig_path), caption="Análisis de Cantones (del notebook)", use_container_width=True)
+        st.image(str(fig_path), caption="Análisis de Cantones (del notebook)", width='stretch')
 
 st.markdown("---")
 
@@ -291,7 +291,7 @@ if 'ACTIVIDAD_ECONOMICA' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         yaxis={'categoryorder': 'total ascending'},
         template='plotly_white'
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 else:
     st.warning("⚠️ No hay datos de actividad económica disponibles")
 
@@ -322,7 +322,7 @@ if 'TIPO_CONTRIBUYENTE' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             color_continuous_scale='Oranges'
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Promedio por tipo
@@ -336,12 +336,12 @@ if 'TIPO_CONTRIBUYENTE' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             color_continuous_scale='Purples'
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Mostrar imagen guardada
     fig_path = Path(__file__).parent.parent / "Fig_8_Tipo_Contribuyente.png"
     if fig_path.exists():
-        st.image(str(fig_path), caption="Análisis por Tipo de Contribuyente (del notebook)", use_container_width=True)
+        st.image(str(fig_path), caption="Análisis por Tipo de Contribuyente (del notebook)", width='stretch')
 
 st.markdown("---")
 
@@ -362,7 +362,7 @@ if 'VALOR_RECAUDADO' in df.columns:
             marginal="box"
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Box plot por año si está disponible
@@ -375,7 +375,7 @@ if 'VALOR_RECAUDADO' in df.columns:
                 labels={'VALOR_RECAUDADO': 'Valor Recaudado ($)', 'ANIO': 'Año'}
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 # Footer
 st.markdown("---")

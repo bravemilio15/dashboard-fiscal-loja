@@ -9,6 +9,12 @@ import numpy as np
 from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import RobustScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import matplotlib.patches as mpatches
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.icons import icon, icon_text, MATERIAL_ICONS_CDN, Icons
@@ -121,35 +127,179 @@ if modelo == 'IsolationForest':
         </div>
         """, unsafe_allow_html=True)
     
-    # GRÁFICO 1: Dispersión por Tipo y Valor
+    # GRÁFICO 1: Mapa de Dispersión Simple por Tipo
+    st.markdown("### Mapa de Dispersión: Anomalías Detectadas")
+    
     if 'TIPO_CONTRIBUYENTE' in df.columns:
-        df_viz = df.sample(min(5000, len(df)), random_state=42).copy()
+        # Preparar datos
+        df_viz = df.copy()
         df_viz['CATEGORIA'] = 'Normal'
         df_viz.loc[df_viz['VALOR_RECAUDADO'] > 500, 'CATEGORIA'] = 'Élite Fiscal'
         df_viz.loc[(df_viz['TIPO_CONTRIBUYENTE'] == 'SOCIEDADES') & 
                    (df_viz['VALOR_RECAUDADO'] <= 100), 'CATEGORIA'] = 'Riesgo'
         
-        fig = px.scatter(
-            df_viz,
-            x='VALOR_RECAUDADO',
-            y='TIPO_CONTRIBUYENTE',
-            color='CATEGORIA',
-            color_discrete_map={
-                'Normal': '#95a5a6',
-                'Élite Fiscal': '#2ecc71',
-                'Riesgo': '#e74c3c'
-            },
-            size='VALOR_RECAUDADO',
-            size_max=15,
-            opacity=0.6,
-            title="<b>Mapa de Dispersión: Anomalías Detectadas</b>",
-            labels={'VALOR_RECAUDADO': 'Valor Recaudado ($)', 'TIPO_CONTRIBUYENTE': 'Tipo'},
-            height=500
-        )
+        # Agregar jitter al eje Y para separar puntos
+        tipo_map = {tipo: i for i, tipo in enumerate(df_viz['TIPO_CONTRIBUYENTE'].unique())}
+        df_viz['TIPO_NUM'] = df_viz['TIPO_CONTRIBUYENTE'].map(tipo_map)
         
-        fig.update_xaxes(type="log", title="<b>Valor Recaudado ($) - Escala Log</b>")
-        fig.update_layout(template='plotly_white')
-        st.plotly_chart(fig, use_container_width=True)
+        # Sample para visualización
+        df_sample = df_viz.sample(min(10000, len(df_viz)), random_state=42)
+        
+        col_main, col_legend = st.columns([3, 1])
+        
+        with col_main:
+            fig = go.Figure()
+            
+            # Orden de categorías para que Riesgo y Élite estén al frente
+            for categoria, color in [('Normal', '#95a5a6'), ('Riesgo', '#e74c3c'), ('Élite Fiscal', '#2ecc71')]:
+                df_cat = df_sample[df_sample['CATEGORIA'] == categoria]
+                
+                fig.add_trace(go.Scatter(
+                    x=df_cat['VALOR_RECAUDADO'],
+                    y=df_cat['TIPO_CONTRIBUYENTE'],
+                    mode='markers',
+                    name=categoria,
+                    marker=dict(
+                        size=6 if categoria == 'Normal' else 8,
+                        color=color,
+                        opacity=0.5 if categoria == 'Normal' else 0.8,
+                        line=dict(width=0.5, color='white')
+                    ),
+                    hovertemplate=f'<b>{categoria}</b><br>Tipo: %{{y}}<br>Valor: $%{{x:,.0f}}<extra></extra>'
+                ))
+            
+            fig.update_layout(
+                xaxis_title="<b>Valor Recaudado ($) - Escala Log</b>",
+                yaxis_title="<b>Tipo</b>",
+                xaxis_type="log",
+                height=450,
+                template='plotly_white',
+                showlegend=True,
+                legend=dict(
+                    title="<b>CATEGORÍA</b>",
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="right",
+                    x=0.99,
+                    bgcolor="rgba(255,255,255,0.9)",
+                    bordercolor="#cccccc",
+                    borderwidth=1
+                ),
+                margin=dict(l=150, r=50, t=50, b=80)
+            )
+            
+            st.plotly_chart(fig, width='stretch')
+    
+    # =========================================================================
+    # GRÁFICO 3: MODELO OPTIMIZADO CON MATPLOTLIB (del notebook)
+    # =========================================================================
+    st.markdown("### Resultados del Modelo Optimizado")
+    
+    # Preparar datos para el modelo de Isolation Forest
+    X_work = df.copy()
+    mapeo = {'NO TIENE': 0, 'PERSONAS NATURALES': 1, 'SOCIEDADES': 2}
+    X_work['TIPO_CODIFICADO'] = X_work['TIPO_CONTRIBUYENTE'].map(mapeo).fillna(0)
+    X_work['VALOR_LOG'] = np.log1p(X_work['VALOR_RECAUDADO'])
+    
+    # Variables de Alto Contraste
+    X_work['TIPO_PONDERADO'] = X_work['TIPO_CODIFICADO'] * 8.0 
+    X_work['VALOR_DESV'] = (X_work['VALOR_RECAUDADO'] - X_work['VALOR_RECAUDADO'].mean()) / X_work['VALOR_RECAUDADO'].std()
+    X_work['TIPO_VALOR_INT'] = X_work['TIPO_PONDERADO'] * (X_work['VALOR_LOG'] + 1)
+    
+    # Codificar CLUSTER_GEO si es necesario
+    if X_work['CLUSTER_GEO'].dtype == 'object':
+        mapeo_geo = {'CENTRO': 2, 'PERIFERIA': 1}
+        X_work['CLUSTER_GEO'] = X_work['CLUSTER_GEO'].map(mapeo_geo).fillna(0)
+    
+    cols = ['VALOR_LOG', 'TIPO_PONDERADO', 'CLUSTER_GEO', 'VALOR_DESV', 'TIPO_VALOR_INT']
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.ensemble import IsolationForest
+    from matplotlib.ticker import FuncFormatter
+    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_work[cols])
+    
+    # Entrenamiento del modelo
+    iso = IsolationForest(
+        n_estimators=500,
+        contamination=0.18,
+        max_features=1,
+        max_samples='auto',
+        random_state=42,
+        n_jobs=-1
+    )
+    
+    X_work['ANOMALIA_RAW'] = iso.fit_predict(X_scaled)
+    X_work['SCORE'] = iso.decision_function(X_scaled)
+    
+    # Definir Ground Truth
+    es_elite = X_work['VALOR_RECAUDADO'] > 500
+    es_riesgo = (X_work['TIPO_CODIFICADO'] == 2) & (X_work['VALOR_RECAUDADO'] <= 100)
+    X_work['TARGET_REAL'] = (es_elite | es_riesgo).astype(int)
+    
+    # Calcular precisión
+    anomalos_raw = X_work[X_work['ANOMALIA_RAW'] == -1]
+    aciertos_raw = anomalos_raw[anomalos_raw['TARGET_REAL'] == 1]
+    precision_real = len(aciertos_raw) / len(anomalos_raw) if len(anomalos_raw) > 0 else 0
+    
+    # Preparar datos para gráfico
+    anomalos_plot = X_work[X_work['ANOMALIA_RAW'] == -1].copy()
+    casos_importantes = anomalos_plot[anomalos_plot['TARGET_REAL'] == 1]
+    ruido = anomalos_plot[anomalos_plot['TARGET_REAL'] == 0]
+    
+    total_general = len(anomalos_plot)
+    total_rojo = len(casos_importantes)
+    total_naranja = len(ruido)
+    
+    # Crear gráfico con matplotlib
+    fig_iso, ax = plt.subplots(figsize=(16, 8))
+    
+    # Scatter plots
+    ax.scatter(casos_importantes['VALOR_RECAUDADO'], casos_importantes['SCORE'], 
+               color='#DC143C', s=200, alpha=0.85, label='Casos importantes encontrados', 
+               edgecolors='#555555', linewidth=1.5, zorder=3)
+    
+    ax.scatter(ruido['VALOR_RECAUDADO'], ruido['SCORE'], 
+               color='#FF8C00', s=250, alpha=0.85, label='Falsas alarmas (ruido)', 
+               edgecolors='#555555', linewidth=1.5, zorder=2)
+    
+    # Línea de referencia
+    ax.axvline(x=500, color='#32CD32', linestyle='--', linewidth=3, label='Umbral importante ($500)', zorder=1)
+    
+    # Escala logarítmica
+    ax.set_xscale('log')
+    
+    # Formateador de moneda
+    def format_currency(x, p):
+        if x >= 1e6:
+            return f'${x/1e6:.1f}M'
+        elif x >= 1e3:
+            return f'${x/1e3:.0f}K'
+        else:
+            return f'${x:.0f}'
+    
+    ax.xaxis.set_major_formatter(FuncFormatter(format_currency))
+    
+    ax.set_xlabel('Monto de Recaudación en $ (dólares) - Escala Logarítmica', fontsize=13, weight='bold')
+    ax.set_ylabel('Índice de Anomalía (números bajos = más raro)', fontsize=13, weight='bold')
+    ax.set_title(f'Resultados del Modelo Optimizado (F1-Score Max)', fontsize=16, weight='bold', pad=20)
+    ax.grid(True, alpha=0.4, linestyle=':', which='both')
+    
+    # Leyenda con estadísticas
+    handles, labels = ax.get_legend_handles_labels()
+    handles.append(plt.Line2D([0], [0], color='none', label=''))
+    handles.append(plt.Line2D([0], [0], color='none', label=f'Precisión: {precision_real*100:.1f}%', linewidth=0, marker=''))
+    handles.append(plt.Line2D([0], [0], color='none', label=''))
+    handles.append(plt.Line2D([0], [0], color='none', label=f'Total datos: {total_general}', linewidth=0, marker=''))
+    handles.append(plt.Line2D([0], [0], color='none', label=f'Puntos rojos: {total_rojo}', linewidth=0, marker=''))
+    handles.append(plt.Line2D([0], [0], color='none', label=f'Puntos naranjas: {total_naranja}', linewidth=0, marker=''))
+    
+    ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=11, 
+              framealpha=0.98, title='Resultados', title_fontsize=13, frameon=True, fancybox=True, shadow=True)
+    
+    plt.tight_layout()
+    st.pyplot(fig_iso, width='stretch')
+    plt.close()
     
     # GRÁFICO 2: Distribución de Anomalías
     col1, col2 = st.columns(2)
@@ -166,7 +316,7 @@ if modelo == 'IsolationForest':
                 color_continuous_scale='Greens'
             )
             fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Distribución de valores élite
@@ -180,7 +330,7 @@ if modelo == 'IsolationForest':
                 color_discrete_sequence=['#2ecc71']
             )
             fig.update_layout(height=400, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 # ==============================================================================
 # MODELO 2: K-MEANS - SEGMENTACIÓN
@@ -189,22 +339,109 @@ if modelo == 'IsolationForest':
 elif modelo == 'KMeans':
     st.markdown(f"## {icon_text(Icons.CLUSTER, 'Segmentación de Contribuyentes en 7 Perfiles', 28, '#9b59b6')}", unsafe_allow_html=True)
     
-    st.info("**Objetivo:** Agrupar contribuyentes según comportamiento fiscal")
+    st.info("**Objetivo:** Agrupar contribuyentes según comportamiento fiscal mediante K-Means")
     
-    # Crear clústeres simulados
-    df_cluster = df.copy()
-    df_cluster['CLUSTER'] = pd.cut(
-        df_cluster['VALOR_RECAUDADO'],
-        bins=[0, 10, 50, 100, 500, 1000, 5000, np.inf],
-        labels=['Subsistencia', 'Básico', 'Estándar', 'Consolidado', 'Alto', 'Premium', 'Élite']
-    )
+    # =========================================================================
+    # PREPROCESAMIENTO PARA K-MEANS (idéntico al notebook)
+    # =========================================================================
     
-    # Métricas de clústeres
-    cluster_stats = df_cluster.groupby('CLUSTER').agg({
-        'VALOR_RECAUDADO': ['sum', 'mean', 'count']
+    # 1. Codificación ordinal de TIPO_CONTRIBUYENTE
+    mapeo_tipo = {'NO TIENE': 0, 'PERSONAS NATURALES': 1, 'SOCIEDADES': 2}
+    X_work = df.copy()
+    X_work['TIPO_CODIFICADO'] = X_work['TIPO_CONTRIBUYENTE'].map(mapeo_tipo).fillna(0)
+    
+    # 1b. Codificación de CLUSTER_GEO si es texto
+    if X_work['CLUSTER_GEO'].dtype == 'object':
+        # Mapeo ordinal: CENTRO > PERIFERIA > otros
+        mapeo_geo = {'CENTRO': 2, 'PERIFERIA': 1}
+        X_work['CLUSTER_GEO'] = X_work['CLUSTER_GEO'].map(mapeo_geo).fillna(0)
+    
+    # 2. Selección de variables
+    features = ['VALOR_RECAUDADO', 'TIPO_CODIFICADO', 'CLUSTER_GEO']
+    X_pre = X_work[features].copy()
+    
+    # 3. Transformación logarítmica
+    X_pre['VALOR_RECAUDADO'] = np.log1p(X_pre['VALOR_RECAUDADO'])
+    
+    # 4. Escalado robusto
+    scaler = RobustScaler()
+    X_scaled = scaler.fit_transform(X_pre)
+    
+    # 5. Crear dataframe final
+    X_final = pd.DataFrame(X_scaled, columns=features)
+    
+    # =========================================================================
+    # ENTRENAMIENTO K-MEANS CON K=7
+    # =========================================================================
+    
+    k_optimo = 7
+    kmeans_final = KMeans(n_clusters=k_optimo, random_state=42, n_init=10)
+    clusters = kmeans_final.fit_predict(X_final)
+    df_work = df.copy()
+    df_work['CLUSTER_KMEANS'] = clusters
+    
+    # =========================================================================
+    # PREPARACIÓN DE DATOS PARA VISUALIZACIÓN
+    # =========================================================================
+    
+    paleta_colores = {
+        'N1: Subsistencia': '#7f7f7f',  # Gris
+        'N2: Básico':       '#17becf',  # Cian
+        'N3: Medio-Bajo':   '#2ca02c',  # Verde
+        'N4: Medio':        '#9467bd',  # Púrpura
+        'N5: Medio-Alto':   '#ff7f0e',  # Naranja
+        'N6: Alto Valor':   '#d62728',  # Rojo
+        'N7: Élite/VIP':    "#ffff00"   # Amarillo
+    }
+    
+    # Recálculo de estadísticas
+    perfil = df_work.groupby('CLUSTER_KMEANS').agg({
+        'VALOR_RECAUDADO': ['count', 'median', 'sum'], 
+        'CLUSTER_GEO': lambda x: x.mode()[0], 
+        'TIPO_CONTRIBUYENTE': lambda x: x.mode()[0]
     }).reset_index()
-    cluster_stats.columns = ['CLUSTER', 'TOTAL', 'PROMEDIO', 'CANTIDAD']
     
+    perfil.columns = ['ClusterID', 'Cantidad', 'Mediana', 'Total_Dinero', 'Ubicacion_Moda', 'Tipo_Moda']
+    
+    # Cálculo de totales generales
+    gran_total_dinero = perfil['Total_Dinero'].sum()
+    gran_total_personas = perfil['Cantidad'].sum()
+    
+    perfil['Share_Pct'] = (perfil['Total_Dinero'] / gran_total_dinero) * 100
+    perfil = perfil.sort_values('Mediana', ascending=True)
+    
+    # Mapeo de nombres
+    nombres_base = [
+        'N1: Subsistencia', 'N2: Básico', 'N3: Medio-Bajo', 
+        'N4: Medio', 'N5: Medio-Alto', 'N6: Alto Valor', 'N7: Élite'
+    ]
+    
+    mapa_nombres = {}
+    mapa_colores = {}
+    leyenda_elementos = [] 
+    
+    for i, row in enumerate(perfil.itertuples()):
+        nombre_grupo = nombres_base[i] if i < len(nombres_base) else f'Nivel {i+1}'
+        
+        mapa_nombres[row.ClusterID] = nombre_grupo
+        color = paleta_colores.get(nombre_grupo, '#333333')
+        mapa_colores[nombre_grupo] = color
+        
+        tipo_simple = str(row.Tipo_Moda).replace('PERSONAS NATURALES', 'NATURALES').replace('SOCIEDADES', 'EMPRESAS')
+        
+        # Texto Leyenda
+        label_texto = (f"{nombre_grupo}\n"
+                       f"   ► Perfil: {tipo_simple}\n"
+                       f"   ► Cantidad: {int(row.Cantidad):,} registros\n"
+                       f"   ► Típico: ${row.Mediana:.0f} | Aporte: {row.Share_Pct:.2f}%")
+        
+        patch = mpatches.Patch(color=color, label=label_texto)
+        leyenda_elementos.append(patch)
+    
+    df_work['SEGMENTO_FINAL'] = df_work['CLUSTER_KMEANS'].map(mapa_nombres)
+    perfil['Nombre_Grupo'] = perfil['ClusterID'].map(mapa_nombres)
+    
+    # Métricas
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(f"""
@@ -218,16 +455,16 @@ elif modelo == 'KMeans':
         st.markdown(f"""
         <div style='text-align:center'>
             {icon('groups', 48, '#2ecc71')}<br>
-            <h3 style='margin:0'>{len(df_cluster):,}</h3>
+            <h3 style='margin:0'>{gran_total_personas:,}</h3>
             <small>Contribuyentes</small>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        cluster_mayor = cluster_stats.loc[cluster_stats['CANTIDAD'].idxmax(), 'CLUSTER']
+        cluster_mayor_nombre = perfil.loc[perfil['Cantidad'].idxmax(), 'Nombre_Grupo']
         st.markdown(f"""
         <div style='text-align:center'>
             {icon('emoji_events', 48, '#f39c12')}<br>
-            <h3 style='margin:0'>{cluster_mayor}</h3>
+            <h3 style='margin:0'>{cluster_mayor_nombre}</h3>
             <small>Cluster Mayor</small>
         </div>
         """, unsafe_allow_html=True)
@@ -240,51 +477,96 @@ elif modelo == 'KMeans':
         </div>
         """, unsafe_allow_html=True)
     
-    # GRÁFICO 1: Sunburst de Clústeres
-    if 'TIPO_CONTRIBUYENTE' in df.columns:
-        df_sun = df_cluster.groupby(['CLUSTER', 'TIPO_CONTRIBUYENTE']).size().reset_index(name='COUNT')
-        
-        fig = px.sunburst(
-            df_sun,
-            path=['CLUSTER', 'TIPO_CONTRIBUYENTE'],
-            values='COUNT',
-            title="<b>Mapa Fiscal: 7 Clústeres por Tipo de Contribuyente</b>",
-            color='COUNT',
-            color_continuous_scale='RdYlGn',
-            height=600
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # =========================================================================
+    # GRAFICACIÓN CON MATPLOTLIB (idéntico al notebook)
+    # =========================================================================
+    
+    st.markdown("### Mapa Fiscal de Contribuyentes")
+    
+    plt.figure(figsize=(18, 10))
+    
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_final)
+    df_pca = pd.DataFrame(X_pca, columns=['x', 'y'])
+    df_pca['Segmento'] = df_work['SEGMENTO_FINAL']
+    df_pca.sort_values('Segmento', inplace=True)
+    
+    # A. NUBE DE PUNTOS
+    sns.scatterplot(x='x', y='y', hue='Segmento', data=df_pca, 
+                    palette=mapa_colores, alpha=0.6, s=50, edgecolor='w', linewidth=0.5, legend=False)
+    
+    # B. CENTROIDES
+    centroides = df_pca.groupby('Segmento')[['x', 'y']].mean().reset_index()
+    for i, row in centroides.iterrows():
+        nombre_segmento = row['Segmento']
+        color_segmento = mapa_colores[nombre_segmento]
+        plt.scatter(row['x'], row['y'], c=color_segmento, s=300, marker='X', 
+                    edgecolors='black', linewidth=2, zorder=10)
+    
+    # C. TÍTULOS DINÁMICOS
+    titulo_principal = f"Mapa fiscal: Total recaudado ${gran_total_dinero/1e6:,.1f} millones USD"
+    subtitulo = f"Segmentación de {gran_total_personas:,} contribuyentes en 7 perfiles (2020-2024)"
+    
+    plt.suptitle(titulo_principal, fontsize=22, weight='bold', y=0.96)
+    plt.title(subtitulo, fontsize=14, color='#555555', pad=10)
+    
+    plt.xlabel('EJE X: CAPACIDAD DE PAGO (Dinero) ->', fontsize=14, weight='bold')
+    plt.ylabel('EJE Y: ESTRUCTURA DEL CONTRIBUYENTE (Jerarquía) ->', fontsize=14, weight='bold')
+    
+    # LEYENDA AJUSTADA
+    plt.legend(handles=leyenda_elementos, 
+               title='FICHA TÉCNICA', 
+               title_fontsize='18',   
+               fontsize='14',         
+               loc='center left', bbox_to_anchor=(1.01, 0.5),
+               frameon=True, shadow=True, borderpad=1.5, labelspacing=1.2)
+    
+    plt.grid(True, linestyle='--', alpha=0.4)
+    plt.subplots_adjust(right=0.65, top=0.88) 
+    
+    st.pyplot(plt, width='stretch')
+    plt.close()
+    
+    # =========================================================================
+    # TABLA RESUMEN
+    # =========================================================================
+    
+    st.markdown("### Resumen Ejecutivo del Modelo")
+    columnas = ['Nombre_Grupo', 'Cantidad', 'Tipo_Moda', 'Mediana', 'Total_Dinero', 'Share_Pct']
+    st.dataframe(perfil[columnas].round(2), width='stretch')
     
     # GRÁFICO 2: Comparativa de Clústeres
     col1, col2 = st.columns(2)
     
     with col1:
         fig = px.bar(
-            cluster_stats,
-            x='CLUSTER',
-            y='CANTIDAD',
+            perfil,
+            x='Nombre_Grupo',
+            y='Cantidad',
             title="<b>Cantidad por Clúster</b>",
-            color='CANTIDAD',
+            color='Cantidad',
             color_continuous_scale='Blues',
-            text='CANTIDAD'
+            text='Cantidad'
         )
         fig.update_traces(texttemplate='%{text:,}', textposition='outside')
-        fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
+        fig.update_yaxes(range=[0, perfil['Cantidad'].max() * 1.15])
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         fig = px.bar(
-            cluster_stats,
-            x='CLUSTER',
-            y='TOTAL',
+            perfil,
+            x='Nombre_Grupo',
+            y='Total_Dinero',
             title="<b>Recaudación Total por Clúster</b>",
-            color='TOTAL',
+            color='Total_Dinero',
             color_continuous_scale='Greens',
-            text=cluster_stats['TOTAL'] / 1e6
+            text=perfil['Total_Dinero'] / 1e6
         )
         fig.update_traces(texttemplate='$%{text:.1f}M', textposition='outside')
-        fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
+        fig.update_yaxes(range=[0, perfil['Total_Dinero'].max() * 1.15])
+        st.plotly_chart(fig, width='stretch')
     
     # GRÁFICO 3: Características de cada clúster
     st.markdown(f"### {icon_text(Icons.PIE, 'Perfiles de Clústeres', 24, '#3498db')}", unsafe_allow_html=True)
@@ -292,32 +574,32 @@ elif modelo == 'KMeans':
     fig = go.Figure()
     
     fig.add_trace(go.Scatter(
-        x=cluster_stats['PROMEDIO'],
-        y=cluster_stats['CANTIDAD'],
+        x=perfil['Mediana'],
+        y=perfil['Cantidad'],
         mode='markers+text',
         marker=dict(
-            size=cluster_stats['TOTAL'] / 1e5,
-            color=cluster_stats['TOTAL'],
+            size=perfil['Total_Dinero'] / 1e5,
+            color=perfil['Total_Dinero'],
             colorscale='Viridis',
             showscale=True,
             colorbar=dict(title="Recaudación Total")
         ),
-        text=cluster_stats['CLUSTER'],
+        text=perfil['Nombre_Grupo'],
         textposition='top center',
         textfont=dict(size=12, color='white'),
-        hovertemplate='<b>%{text}</b><br>Promedio: $%{x:,.0f}<br>Cantidad: %{y:,}<extra></extra>'
+        hovertemplate='<b>%{text}</b><br>Mediana: $%{x:,.0f}<br>Cantidad: %{y:,}<extra></extra>'
     ))
     
     fig.update_layout(
-        title="<b>Análisis de Clústeres: Promedio vs Cantidad</b>",
-        xaxis_title="<b>Promedio de Recaudación ($)</b>",
+        title="<b>Análisis de Clústeres: Mediana vs Cantidad</b>",
+        xaxis_title="<b>Mediana de Recaudación ($)</b>",
         yaxis_title="<b>Cantidad de Contribuyentes</b>",
         height=500,
         template='plotly_white',
         xaxis_type='log'
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 # ==============================================================================
 # MODELO 3: ÁRBOL DE DECISIÓN
@@ -386,7 +668,7 @@ elif modelo == 'Tree':
             )
             fig.update_traces(textposition='inside', textinfo='percent+label')
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with col2:
             # Comparación por tipo
@@ -404,7 +686,7 @@ elif modelo == 'Tree':
                     color_discrete_map={'Tributan': '#2ecc71', 'No Tributan': '#e74c3c'}
                 )
                 fig.update_layout(height=400, xaxis_tickangle=-45)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
         
         # GRÁFICO 2: Importancia de Variables (simulada)
         st.markdown(f"### {icon_text(Icons.BAR_CHART, 'Importancia de Variables', 24, '#2ecc71')}", unsafe_allow_html=True)
@@ -433,7 +715,7 @@ elif modelo == 'Tree':
             template='plotly_white'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # GRÁFICO 3: Matriz de Confusión Simulada
         col1, col2 = st.columns(2)
@@ -458,7 +740,7 @@ elif modelo == 'Tree':
                 height=400
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with col2:
             # Métricas de performance
@@ -485,7 +767,7 @@ elif modelo == 'Tree':
                 template='plotly_white'
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     else:
         st.error("[ERROR] No se encontró la columna FLAG_ES_CERO")
         st.info("La columna FLAG_ES_CERO debe ser creada a partir de VALOR_RECAUDADO")
@@ -612,7 +894,7 @@ elif modelo == 'HoltWinters':
             template='plotly_white'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # GRÁFICO 2: Comparativa Mensual
         col1, col2 = st.columns(2)
@@ -644,7 +926,7 @@ elif modelo == 'HoltWinters':
                 template='plotly_white'
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with col2:
             # Comparación 2024 vs 2025
@@ -671,7 +953,7 @@ elif modelo == 'HoltWinters':
                 showlegend=False
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         # GRÁFICO 3: Descomposición (simulada)
         st.markdown(f"### {icon_text(Icons.ANALYTICS, 'Componentes del Modelo', 24, '#e67e22')}", unsafe_allow_html=True)
@@ -697,7 +979,7 @@ elif modelo == 'HoltWinters':
             template='plotly_white'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 # Footer
 st.markdown("---")

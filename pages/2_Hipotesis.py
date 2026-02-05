@@ -101,7 +101,7 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             yaxis={'categoryorder': 'total ascending'}
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de pastel
@@ -114,7 +114,7 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         
         fig.update_traces(textposition='inside', textinfo='percent+label')
         fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Conclusión
     st.markdown("### Conclusión")
@@ -221,7 +221,7 @@ if 'ACTIVIDAD_ECONOMICA' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             hovermode='x unified'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Top 10 actividades
@@ -249,7 +249,7 @@ if 'ACTIVIDAD_ECONOMICA' in df.columns and 'VALOR_RECAUDADO' in df.columns:
     )
     
     fig.update_layout(height=600, yaxis={'categoryorder': 'total ascending'}, showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     # Conclusión
     st.markdown("### Conclusión")
@@ -335,7 +335,7 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             hovermode='x unified'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de crecimiento interanual
@@ -362,7 +362,7 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             height=400
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Tabla de resumen
     st.markdown("### Resumen Anual Detallado")
@@ -373,7 +373,7 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         'Crecimiento (%)': ['-'] + [f"{val:.2f}%" for val in crecimiento_anual.values[1:]]
     })
     
-    st.dataframe(resumen, use_container_width=True, hide_index=True)
+    st.dataframe(resumen, width='stretch', hide_index=True)
     
     # Análisis mensual si está disponible
     if 'MES' in df.columns:
@@ -392,7 +392,7 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         )
         
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # Conclusión
     st.markdown("### Conclusión")
