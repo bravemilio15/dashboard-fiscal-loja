@@ -1041,6 +1041,7 @@ elif modelo == 'HoltWinters':
         with col1:
             # Valores mensuales predichos
             meses_nombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio']
+            colores_meses = ['#27AE60', '#E74C3C', '#E74C3C', '#2ECC71', '#E67E22', '#E67E22']
             
             fig = go.Figure()
             
@@ -1048,12 +1049,13 @@ elif modelo == 'HoltWinters':
                 x=meses_nombres,
                 y=np.array(prediccion) / 1e6,
                 marker=dict(
-                    color=prediccion,
-                    colorscale='RdYlGn',
-                    showscale=False
+                    color=colores_meses,
+                    line=dict(color='white', width=2)
                 ),
-                text=[f"${p/1e6:.1f}M" for p in prediccion],
+                text=[f"<b>${p/1e6:.1f}M</b>" for p in prediccion],
                 textposition='outside',
+                textfont=dict(size=15, color='#000000', family='Arial Black'),
+                hovertemplate='<b>%{x}</b><br>$%{y:.1f}M<extra></extra>',
                 name='Predicción'
             ))
             
@@ -1062,7 +1064,14 @@ elif modelo == 'HoltWinters':
                 xaxis_title="<b>Mes</b>",
                 yaxis_title="<b>Millones ($)</b>",
                 height=400,
-                template='plotly_white'
+                template='plotly_white',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                xaxis=dict(gridcolor='#E8E8E8'),
+                yaxis=dict(gridcolor='#E8E8E8', range=[0, max(prediccion) / 1e6 * 1.15]),
+                showlegend=False
             )
             
             st.plotly_chart(fig, width='stretch')
@@ -1077,9 +1086,14 @@ elif modelo == 'HoltWinters':
             fig.add_trace(go.Bar(
                 x=['1er Sem 2024', '1er Sem 2025 (Proyección)'],
                 y=[primer_sem_2024 / 1e6, total_pred_2025 / 1e6],
-                marker=dict(color=['#3498db', '#e74c3c']),
-                text=[f"${primer_sem_2024/1e6:.1f}M", f"${total_pred_2025/1e6:.1f}M"],
-                textposition='outside'
+                marker=dict(
+                    color=['#3498DB', '#E74C3C'],
+                    line=dict(color='white', width=2)
+                ),
+                text=[f"<b>${primer_sem_2024/1e6:.1f}M</b>", f"<b>${total_pred_2025/1e6:.1f}M</b>"],
+                textposition='outside',
+                textfont=dict(size=16, color='#000000', family='Arial Black'),
+                hovertemplate='<b>%{x}</b><br>$%{y:.1f}M<extra></extra>'
             ))
             
             crecimiento = ((total_pred_2025 / primer_sem_2024) - 1) * 100 if primer_sem_2024 > 0 else 0
@@ -1089,6 +1103,12 @@ elif modelo == 'HoltWinters':
                 yaxis_title="<b>Millones ($)</b>",
                 height=400,
                 template='plotly_white',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                xaxis=dict(gridcolor='#E8E8E8'),
+                yaxis=dict(gridcolor='#E8E8E8', range=[0, max(primer_sem_2024, total_pred_2025) / 1e6 * 1.15]),
                 showlegend=False
             )
             

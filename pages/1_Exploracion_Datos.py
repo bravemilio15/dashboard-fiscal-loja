@@ -304,9 +304,9 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
             xaxis=dict(
                 gridcolor='#E8E8E8',
-                range=[0, (top_10['TOTAL_RECAUDADO'].max() / 1e6) * 1.22]
+                range=[0, (top_10['TOTAL_RECAUDADO'].max() / 1e6) * 1.25]
             ),
-            margin=dict(l=120, r=150, t=60, b=60)
+            margin=dict(l=120, r=180, t=60, b=60)
         )
         st.plotly_chart(fig, width='stretch')
     
@@ -315,26 +315,40 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         top_5 = recaudacion_canton.head(5)
         colors = ['#E74C3C' if c == 'LOJA' else '#3498DB' for c in top_5['CANTON']]
         
+        # Recalcular porcentajes correctamente basados en el top 5
+        top_5_copy = top_5.copy()
+        top_5_copy['PORCENTAJE'] = (top_5_copy['TOTAL_RECAUDADO'] / top_5_copy['TOTAL_RECAUDADO'].sum() * 100).round(1)
+        
         fig = go.Figure(data=[go.Pie(
-            labels=top_5['CANTON'],
-            values=top_5['TOTAL_RECAUDADO'],
+            labels=top_5_copy['CANTON'],
+            values=top_5_copy['TOTAL_RECAUDADO'],
             hole=0.5,
             marker=dict(colors=colors, line=dict(color='white', width=3)),
-            textinfo='percent+label',
-            textfont=dict(size=14, color='#000000', family='Arial Black'),
-            textposition='outside'
+            textinfo='percent',
+            textfont=dict(size=16, color='#000000', family='Arial Black'),
+            textposition='outside',
+            insidetextorientation='radial',
+            pull=[0.05 if c == 'LOJA' else 0 for c in top_5_copy['CANTON']],
+            hovertemplate='<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>'
         )])
         
         fig.update_layout(
-            title="<b>Top 5 Cantones<br>(% Recaudación)</b>",
+            title="<b>Distribución Top 5 Cantones</b>",
             height=500,
             template='plotly_white',
             paper_bgcolor='white',
             font=dict(size=14, color='#000000', family='Arial'),
             title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
             showlegend=True,
-            legend=dict(font=dict(size=13, color='#000000')),
-            margin=dict(l=80, r=80, t=100, b=80)
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.15,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=13, color='#000000', family='Arial Black')
+            ),
+            margin=dict(l=100, r=100, t=100, b=120)
         )
         st.plotly_chart(fig, width='stretch')
     
@@ -552,7 +566,7 @@ if 'VALOR_RECAUDADO' in df.columns:
         ))
         
         fig.update_layout(
-            title="<b>Distribución de Contribuyentes por Rango de Recaudación</b>",
+            title="<b>Distribución de Contribuyentes<br>por Rango de Recaudación</b>",
             xaxis_title="<b>Rango de Monto</b>",
             yaxis_title="<b>Número de Contribuyentes</b>",
             height=450,
@@ -563,7 +577,7 @@ if 'VALOR_RECAUDADO' in df.columns:
             title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
             xaxis=dict(tickangle=-20, gridcolor='#E8E8E8'),
             yaxis=dict(gridcolor='#E8E8E8', range=[0, rangos_count.max() * 1.15]),
-            margin=dict(t=80, b=100)
+            margin=dict(t=100, b=100, l=80, r=80)
         )
         st.plotly_chart(fig, width='stretch')
     

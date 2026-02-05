@@ -82,38 +82,77 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         
         fig = go.Figure()
         
-        colors = ['#e74c3c' if i == 0 else '#3498db' for i in range(len(top_10_cantones))]
+        colors = ['#E74C3C' if i == 0 else '#3498DB' for i in range(len(top_10_cantones))]
         
         fig.add_trace(go.Bar(
             y=top_10_cantones.index,
-            x=top_10_cantones.values,
+            x=top_10_cantones.values / 1e6,
             orientation='h',
-            marker=dict(color=colors),
-            text=[f"{recaudacion_canton_pct[canton]} %" for canton in top_10_cantones.index],
-            textposition='outside'
+            marker=dict(color=colors, line=dict(color='white', width=2)),
+            text=[f"<b>{recaudacion_canton_pct[canton]}%</b>" for canton in top_10_cantones.index],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{y}</b><br>$%{x:.1f}M (%{text})<extra></extra>'
         ))
         
         fig.update_layout(
-            title="Top 10 Cantones por Recaudación Total",
-            xaxis_title="Recaudación Total ($)",
-            yaxis_title="Cantón",
+            title="<b>Top 10 Cantones por Recaudación Total</b>",
+            xaxis_title="<b>Millones de Dólares ($)</b>",
+            yaxis_title="",
             height=500,
-            yaxis={'categoryorder': 'total ascending'}
+            yaxis={'categoryorder': 'total ascending'},
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(
+                gridcolor='#E8E8E8',
+                range=[0, (top_10_cantones.values.max() / 1e6) * 1.12]
+            ),
+            margin=dict(l=120, r=150, t=60, b=60),
+            uniformtext_minsize=8,
+            uniformtext_mode='hide'
         )
         
         st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de pastel
-        fig = px.pie(
-            values=recaudacion_canton.head(5).values,
-            names=recaudacion_canton.head(5).index,
-            title="Distribución Top 5 Cantones",
-            hole=0.4
+        top_5_recaudacion = recaudacion_canton.head(5)
+        porcentajes_top5 = (top_5_recaudacion / top_5_recaudacion.sum() * 100).round(1)
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=top_5_recaudacion.index,
+            values=top_5_recaudacion.values,
+            hole=0.4,
+            textinfo='none',
+            marker=dict(
+                colors=['#0066CC', '#66B2FF', '#E74C3C', '#F39C12', '#27AE60'],
+                line=dict(color='white', width=2)
+            ),
+            hovertemplate='<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>'
+        )])
+        
+        # Agregar el porcentaje de LOJA en el centro
+        fig.add_annotation(
+            text=f"<b>LOJA<br>{porcentajes_top5.iloc[0]}%</b>",
+            x=0.5, y=0.5,
+            font=dict(size=16, color='#0066CC', family='Arial Black'),
+            showarrow=False
         )
         
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        fig.update_layout(height=500)
+        fig.update_layout(
+            title="<b>Distribución Top 5 Cantones</b>",
+            height=500,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            showlegend=True,
+            legend=dict(orientation='h', yanchor='bottom', y=-0.15, xanchor='center', x=0.5),
+            margin=dict(l=50, r=50, t=60, b=80)
+        )
         st.plotly_chart(fig, width='stretch')
     
     # Conclusión
