@@ -238,9 +238,11 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
 st.markdown("---")
 
 # SECCIÓN 3: ANÁLISIS GEOGRÁFICO (CAPITAL VS PERIFERIA)
-st.subheader("🗺️ Análisis Geográfico: Capital vs. Periferia")
+st.markdown(f"## {icon_text(Icons.MAP, 'Análisis Geográfico: Capital vs. Periferia', 24, '#9b59b6')}", unsafe_allow_html=True)
+st.markdown("")
 
-col1, col2 = st.columns([2, 1])
+# Fila superior: Gráfico de barras + Gráfico de dona
+col1, col2 = st.columns([3, 2])
 
 with col1:
     if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
@@ -259,11 +261,11 @@ with col1:
             orientation='h',
             marker=dict(
                 color=colors,
-                line=dict(color='white', width=2)
+                line=dict(color='white', width=3)
             ),
-            text=[f"{pct}%" for pct in rec_canton_pct],
+            text=[f"<b>{pct}%</b>" for pct in rec_canton_pct],
             textposition='outside',
-            textfont=dict(size=12, family='Arial Black'),
+            textfont=dict(size=15, family='Arial Black', color='#000000'),
             hovertemplate='<b>%{y}</b><br>Recaudación: $%{x:.1f}M<br>Porcentaje: %{text}<extra></extra>'
         ))
         
@@ -271,64 +273,90 @@ with col1:
             title="<b>Ranking de Cantones: Concentración Fiscal</b>",
             xaxis_title="<b>Millones de Dólares ($)</b>",
             yaxis_title="",
-            height=500,
+            height=550,
             yaxis={'categoryorder': 'total ascending'},
-            template='plotly_white'
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(gridcolor='#E8E8E8', range=[0, rec_canton.max() / 1e6 * 1.15]),
+            margin=dict(l=120, r=100, t=60, b=60)
         )
         
         st.plotly_chart(fig, width='stretch')
 
 with col2:
-    # Métricas de concentración
-    st.markdown(f"#### {icon_text(Icons.LOCATION, 'Métricas de Concentración', 20, '#e74c3c')}", unsafe_allow_html=True)
-    
-    if 'CANTON' in df.columns:
-        rec_loja = df[df['CANTON'] == 'LOJA']['VALOR_RECAUDADO'].sum()
-        rec_total = df['VALOR_RECAUDADO'].sum()
-        pct_capital = (rec_loja / rec_total) * 100
-        
-        st.metric("Capital (Loja)", f"{pct_capital:.1f}%", delta=f"${rec_loja/1e6:.1f}M")
-        
-        rec_periferia = rec_total - rec_loja
-        pct_periferia = 100 - pct_capital
-        st.metric("Periferia", f"{pct_periferia:.1f}%", delta=f"${rec_periferia/1e6:.1f}M")
-        
-        ratio = rec_loja / rec_periferia if rec_periferia > 0 else 0
-        st.metric("Ratio Capital/Periferia", f"{ratio:.1f}x")
-        
-        if pct_capital > 80:
-            st.success("✅ Alta concentración en capital")
-        else:
-            st.info("ℹ️ Distribución más equilibrada")
-    
     # Gráfico de dona
     if 'CANTON' in df.columns:
         rec_loja = df[df['CANTON'] == 'LOJA']['VALOR_RECAUDADO'].sum()
         rec_otros = df[df['CANTON'] != 'LOJA']['VALOR_RECAUDADO'].sum()
         
         fig = go.Figure(data=[go.Pie(
-            labels=['CAPITAL (Loja)', 'PERIFERIA (Otros)'],
+            labels=['CAPITAL<br>(Loja)', 'PERIFERIA<br>(Otros)'],
             values=[rec_loja, rec_otros],
             hole=0.6,
-            marker=dict(colors=['#e74c3c', '#3498db']),
+            marker=dict(colors=['#E74C3C', '#3498DB'], line=dict(color='white', width=4)),
             textinfo='percent',
-            textfont=dict(size=16, color='white', family='Arial Black')
+            textfont=dict(size=20, color='#000000', family='Arial Black'),
+            textposition='inside',
+            hovertemplate='<b>%{label}</b><br>%{percent}<br>$%{value:,.0f}<extra></extra>'
         )])
         
         fig.update_layout(
             title="<b>Distribución Geográfica</b>",
-            height=300,
+            height=550,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
             showlegend=True,
-            legend=dict(orientation="v", yanchor="bottom", y=0, xanchor="left", x=0)
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.05,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=13, color='#000000', family='Arial Black')
+            ),
+            margin=dict(l=10, r=10, t=60, b=50)
         )
         
         st.plotly_chart(fig, width='stretch')
+
+# Fila inferior: Métricas de concentración en 4 columnas
+st.markdown("#### 📊 Indicadores de Concentración")
+if 'CANTON' in df.columns:
+    rec_loja = df[df['CANTON'] == 'LOJA']['VALOR_RECAUDADO'].sum()
+    rec_total = df['VALOR_RECAUDADO'].sum()
+    pct_capital = (rec_loja / rec_total) * 100
+    
+    rec_periferia = rec_total - rec_loja
+    pct_periferia = 100 - pct_capital
+    ratio = rec_loja / rec_periferia if rec_periferia > 0 else 0
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Capital (Loja)", f"{pct_capital:.1f}%", delta=f"${rec_loja/1e6:.1f}M")
+    
+    with col2:
+        st.metric("Periferia", f"{pct_periferia:.1f}%", delta=f"${rec_periferia/1e6:.1f}M")
+    
+    with col3:
+        st.metric("Ratio Capital/Periferia", f"{ratio:.1f}x")
+    
+    with col4:
+        if pct_capital > 80:
+            st.success("✅ Alta concentración")
+        else:
+            st.info("ℹ️ Distribución equilibrada")
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
-    <p><strong>Dashboard Ejecutivo - An�lisis Fiscal Loja 2020-2024</strong></p>
+    <p><strong>Dashboard Ejecutivo - Analisis Fiscal Loja 2020-2024</strong></p>
     <p>Proyecto de Data Mining | Universidad Nacional de Loja</p>
 </div>
 """, unsafe_allow_html=True)

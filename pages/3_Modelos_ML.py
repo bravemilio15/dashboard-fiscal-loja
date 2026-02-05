@@ -301,35 +301,103 @@ if modelo == 'IsolationForest':
     st.pyplot(fig_iso, width='stretch')
     plt.close()
     
-    # GRÁFICO 2: Distribución de Anomalías
+    # GRÁFICO 2: Análisis de Élite Fiscal
+    st.markdown("### 📊 Análisis Detallado de Élite Fiscal")
+    
+    # Métricas superiores
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Élite Fiscal", f"{len(elite):,}")
+    with col2:
+        st.metric("Recaudación Élite", f"${elite['VALOR_RECAUDADO'].sum()/1e6:.1f}M")
+    with col3:
+        pct_elite = (elite['VALOR_RECAUDADO'].sum() / df['VALOR_RECAUDADO'].sum() * 100)
+        st.metric("% del Total", f"{pct_elite:.1f}%")
+    
+    st.markdown("")
+    
     col1, col2 = st.columns(2)
     
     with col1:
         if len(elite) > 0 and 'CANTON' in df.columns:
+            # Top 10 cantones con élite fiscal
             elite_canton = elite['CANTON'].value_counts().head(10)
-            fig = px.bar(
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
                 x=elite_canton.index,
                 y=elite_canton.values,
-                title="<b>Élite Fiscal por Cantón</b>",
-                labels={'x': 'Cantón', 'y': 'Cantidad'},
-                color=elite_canton.values,
-                color_continuous_scale='Greens'
+                marker=dict(
+                    color='#27AE60',
+                    line=dict(color='white', width=2)
+                ),
+                text=[f"<b>{val}</b>" for val in elite_canton.values],
+                textposition='outside',
+                textfont=dict(size=14, color='#000000', family='Arial Black'),
+                hovertemplate='<b>%{x}</b><br>%{y} contribuyentes élite<extra></extra>'
+            ))
+            
+            fig.update_layout(
+                title="<b>Top 10 Cantones con Mayor Élite Fiscal</b>",
+                xaxis_title="<b>Cantón</b>",
+                yaxis_title="<b>Cantidad de Contribuyentes Élite</b>",
+                height=450,
+                template='plotly_white',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                xaxis=dict(tickangle=-45, gridcolor='#E8E8E8'),
+                yaxis=dict(gridcolor='#E8E8E8', range=[0, elite_canton.max() * 1.15]),
+                showlegend=False,
+                margin=dict(b=120)
             )
-            fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
             st.plotly_chart(fig, width='stretch')
     
     with col2:
-        # Distribución de valores élite
+        # Distribución por rangos más clara
         if len(elite) > 0:
-            fig = px.histogram(
-                elite,
-                x='VALOR_RECAUDADO',
-                nbins=30,
-                title="<b>Distribución Élite Fiscal</b>",
-                labels={'VALOR_RECAUDADO': 'Valor ($)'},
-                color_discrete_sequence=['#2ecc71']
+            def clasificar_elite(valor):
+                if valor <= 1000:
+                    return "$500-$1K"
+                elif valor <= 10000:
+                    return "$1K-$10K"
+                elif valor <= 100000:
+                    return "$10K-$100K"
+                else:
+                    return ">$100K"
+            
+            elite_copy = elite.copy()
+            elite_copy['RANGO'] = elite_copy['VALOR_RECAUDADO'].apply(clasificar_elite)
+            
+            rangos_count = elite_copy['RANGO'].value_counts().reindex([
+                "$500-$1K", "$1K-$10K", "$10K-$100K", ">$100K"
+            ], fill_value=0)
+            
+            fig = go.Figure(data=[go.Pie(
+                labels=rangos_count.index,
+                values=rangos_count.values,
+                hole=0.5,
+                marker=dict(
+                    colors=['#27AE60', '#2ECC71', '#58D68D', '#82E0AA'],
+                    line=dict(color='white', width=3)
+                ),
+                textinfo='percent+label',
+                textfont=dict(size=13, color='#000000', family='Arial Black'),
+                textposition='outside',
+                hovertemplate='<b>%{label}</b><br>%{value} contribuyentes<br>%{percent}<extra></extra>'
+            )])
+            
+            fig.update_layout(
+                title="<b>Distribución Élite Fiscal<br>por Rango de Recaudación</b>",
+                height=450,
+                template='plotly_white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                showlegend=False,
+                margin=dict(l=20, r=20, t=100, b=80)
             )
-            fig.update_layout(height=400, showlegend=False)
             st.plotly_chart(fig, width='stretch')
 
 # ==============================================================================
@@ -539,67 +607,138 @@ elif modelo == 'KMeans':
     col1, col2 = st.columns(2)
     
     with col1:
-        fig = px.bar(
-            perfil,
-            x='Nombre_Grupo',
-            y='Cantidad',
+        # Colores sólidos para cada clúster
+        colores = ['#3498DB', '#2ECC71', '#F39C12', '#E74C3C', '#9B59B6', '#1ABC9C', '#E67E22']
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=perfil['Nombre_Grupo'],
+            y=perfil['Cantidad'],
+            marker=dict(
+                color=colores[:len(perfil)],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>{val:,}</b>" for val in perfil['Cantidad']],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>%{y:,} contribuyentes<extra></extra>'
+        ))
+        
+        fig.update_layout(
             title="<b>Cantidad por Clúster</b>",
-            color='Cantidad',
-            color_continuous_scale='Blues',
-            text='Cantidad'
+            xaxis_title="<b>Clúster</b>",
+            yaxis_title="<b>Cantidad de Contribuyentes</b>",
+            height=450,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickangle=-30, gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, perfil['Cantidad'].max() * 1.15]),
+            showlegend=False,
+            margin=dict(b=120)
         )
-        fig.update_traces(texttemplate='%{text:,}', textposition='outside')
-        fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
-        fig.update_yaxes(range=[0, perfil['Cantidad'].max() * 1.15])
         st.plotly_chart(fig, width='stretch')
     
     with col2:
-        fig = px.bar(
-            perfil,
-            x='Nombre_Grupo',
-            y='Total_Dinero',
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=perfil['Nombre_Grupo'],
+            y=perfil['Total_Dinero'] / 1e6,
+            marker=dict(
+                color=colores[:len(perfil)],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>${val/1e6:.1f}M</b>" for val in perfil['Total_Dinero']],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>$%{y:.1f}M<extra></extra>'
+        ))
+        
+        fig.update_layout(
             title="<b>Recaudación Total por Clúster</b>",
-            color='Total_Dinero',
-            color_continuous_scale='Greens',
-            text=perfil['Total_Dinero'] / 1e6
+            xaxis_title="<b>Clúster</b>",
+            yaxis_title="<b>Millones de Dólares ($)</b>",
+            height=450,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickangle=-30, gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, (perfil['Total_Dinero'].max() / 1e6) * 1.15]),
+            showlegend=False,
+            margin=dict(b=120)
         )
-        fig.update_traces(texttemplate='$%{text:.1f}M', textposition='outside')
-        fig.update_layout(height=400, showlegend=False, xaxis_tickangle=-45)
-        fig.update_yaxes(range=[0, perfil['Total_Dinero'].max() * 1.15])
         st.plotly_chart(fig, width='stretch')
     
     # GRÁFICO 3: Características de cada clúster
     st.markdown(f"### {icon_text(Icons.PIE, 'Perfiles de Clústeres', 24, '#3498db')}", unsafe_allow_html=True)
     
-    fig = go.Figure()
+    # Crear 2 gráficos más claros
+    col1, col2 = st.columns(2)
     
-    fig.add_trace(go.Scatter(
-        x=perfil['Mediana'],
-        y=perfil['Cantidad'],
-        mode='markers+text',
-        marker=dict(
-            size=perfil['Total_Dinero'] / 1e5,
-            color=perfil['Total_Dinero'],
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(title="Recaudación Total")
-        ),
-        text=perfil['Nombre_Grupo'],
-        textposition='top center',
-        textfont=dict(size=12, color='white'),
-        hovertemplate='<b>%{text}</b><br>Mediana: $%{x:,.0f}<br>Cantidad: %{y:,}<extra></extra>'
-    ))
+    with col1:
+        # Gráfico de pastel: Distribución de contribuyentes
+        colores = ['#3498DB', '#2ECC71', '#F39C12', '#E74C3C', '#9B59B6', '#1ABC9C', '#E67E22']
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=perfil['Nombre_Grupo'],
+            values=perfil['Cantidad'],
+            hole=0.4,
+            marker=dict(colors=colores[:len(perfil)], line=dict(color='white', width=3)),
+            textinfo='percent+label',
+            textfont=dict(size=11, color='#000000', family='Arial Black'),
+            textposition='outside',
+            hovertemplate='<b>%{label}</b><br>%{value:,} contribuyentes<br>%{percent}<extra></extra>'
+        )])
+        
+        fig.update_layout(
+            title="<b>Distribución de Contribuyentes<br>por Clúster</b>",
+            height=500,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            showlegend=False,
+            margin=dict(l=20, r=20, t=100, b=80)
+        )
+        st.plotly_chart(fig, width='stretch')
     
-    fig.update_layout(
-        title="<b>Análisis de Clústeres: Mediana vs Cantidad</b>",
-        xaxis_title="<b>Mediana de Recaudación ($)</b>",
-        yaxis_title="<b>Cantidad de Contribuyentes</b>",
-        height=500,
-        template='plotly_white',
-        xaxis_type='log'
-    )
-    
-    st.plotly_chart(fig, width='stretch')
+    with col2:
+        # Gráfico de barras horizontales: Mediana de recaudación
+        perfil_sorted = perfil.sort_values('Mediana', ascending=True)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            y=perfil_sorted['Nombre_Grupo'],
+            x=perfil_sorted['Mediana'],
+            orientation='h',
+            marker=dict(
+                color=colores[:len(perfil_sorted)],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>${val:,.0f}</b>" for val in perfil_sorted['Mediana']],
+            textposition='outside',
+            textfont=dict(size=13, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{y}</b><br>Mediana: $%{x:,.0f}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title="<b>Mediana de Recaudación<br>por Clúster</b>",
+            xaxis_title="<b>Mediana ($)</b>",
+            yaxis_title="",
+            height=500,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(gridcolor='#E8E8E8', range=[0, perfil_sorted['Mediana'].max() * 1.2]),
+            margin=dict(l=150, r=100, t=100, b=60)
+        )
+        st.plotly_chart(fig, width='stretch')
 
 # ==============================================================================
 # MODELO 3: ÁRBOL DE DECISIÓN
@@ -955,31 +1094,93 @@ elif modelo == 'HoltWinters':
             
             st.plotly_chart(fig, width='stretch')
         
-        # GRÁFICO 3: Descomposición (simulada)
+        # GRÁFICO 3: Descomposición de Serie Temporal
         st.markdown(f"### {icon_text(Icons.ANALYTICS, 'Componentes del Modelo', 24, '#e67e22')}", unsafe_allow_html=True)
         
-        # Calcular componentes simulados
-        tendencia_vals = np.linspace(serie_mensual.mean(), serie_mensual.mean() * 1.2, len(serie_mensual))
+        # Calcular componentes reales usando rolling averages
+        # Tendencia: promedio móvil de 12 meses
+        tendencia = serie_mensual.rolling(window=12, center=True).mean()
         
-        fig = go.Figure()
+        # Estacionalidad: promedio mensual
+        serie_df = pd.DataFrame({'valor': serie_mensual.values}, index=serie_mensual.index)
+        serie_df['mes'] = serie_df.index.month
+        estacionalidad_mensual = serie_df.groupby('mes')['valor'].mean()
         
-        fig.add_trace(go.Scatter(
-            x=serie_mensual.index,
-            y=tendencia_vals / 1e6,
-            mode='lines',
-            name='Tendencia',
-            line=dict(color='#3498db', width=3)
-        ))
+        # Crear 2 gráficos más informativos
+        col1, col2 = st.columns(2)
         
-        fig.update_layout(
-            title="<b>Tendencia de Largo Plazo</b>",
-            xaxis_title="<b>Fecha</b>",
-            yaxis_title="<b>Millones ($)</b>",
-            height=350,
-            template='plotly_white'
-        )
+        with col1:
+            # Gráfico de tendencia real (no simulada)
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=serie_mensual.index,
+                y=serie_mensual.values / 1e6,
+                mode='lines',
+                name='Serie Original',
+                line=dict(color='#95A5A6', width=1),
+                opacity=0.5
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=tendencia.index,
+                y=tendencia.values / 1e6,
+                mode='lines',
+                name='Tendencia (Media Móvil 12 meses)',
+                line=dict(color='#3498DB', width=4)
+            ))
+            
+            fig.update_layout(
+                title="<b>Tendencia de Largo Plazo</b>",
+                xaxis_title="<b>Fecha</b>",
+                yaxis_title="<b>Millones ($)</b>",
+                height=400,
+                template='plotly_white',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            
+            st.plotly_chart(fig, width='stretch')
         
-        st.plotly_chart(fig, width='stretch')
+        with col2:
+            # Patrón estacional por mes
+            meses_nombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            
+            fig = go.Figure()
+            
+            fig.add_trace(go.Bar(
+                x=meses_nombres,
+                y=estacionalidad_mensual.values / 1e6,
+                marker=dict(
+                    color=estacionalidad_mensual.values,
+                    colorscale='RdYlGn',
+                    showscale=False,
+                    line=dict(color='white', width=2)
+                ),
+                text=[f"<b>${val/1e6:.1f}M</b>" for val in estacionalidad_mensual.values],
+                textposition='outside',
+                textfont=dict(size=11, color='#000000', family='Arial Black'),
+                hovertemplate='<b>%{x}</b><br>Promedio: $%{y:.2f}M<extra></extra>'
+            ))
+            
+            fig.update_layout(
+                title="<b>Patrón Estacional Promedio por Mes</b>",
+                xaxis_title="<b>Mes</b>",
+                yaxis_title="<b>Millones ($)</b>",
+                height=400,
+                template='plotly_white',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(size=13, color='#000000', family='Arial'),
+                title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+                yaxis=dict(range=[0, estacionalidad_mensual.max() / 1e6 * 1.15])
+            )
+            
+            st.plotly_chart(fig, width='stretch')
 
 # Footer
 st.markdown("---")

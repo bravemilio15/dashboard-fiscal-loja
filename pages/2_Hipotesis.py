@@ -321,18 +321,42 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             y=recaudacion_anual.values / 1e6,
             mode='lines+markers',
             name='Recaudación',
-            line=dict(color='#2ecc71', width=3),
-            marker=dict(size=12),
+            line=dict(color='#27AE60', width=4),
+            marker=dict(size=14, line=dict(width=2, color='white')),
             fill='tozeroy',
-            fillcolor='rgba(46, 204, 113, 0.2)'
+            fillcolor='rgba(39, 174, 96, 0.2)',
+            hovertemplate='<b>%{x}</b><br>$%{y:.1f}M<extra></extra>'
         ))
         
+        # Agregar anotaciones con valores
+        for i, val in enumerate(recaudacion_anual.values / 1e6):
+            fig.add_annotation(
+                x=recaudacion_anual.index[i],
+                y=val,
+                text=f"<b>${val:.1f}M</b>",
+                showarrow=False,
+                yshift=20,
+                font=dict(size=13, color='#000000', family='Arial Black'),
+                bgcolor='rgba(255,255,255,0.9)',
+                bordercolor='#27AE60',
+                borderwidth=2,
+                borderpad=4
+            )
+        
         fig.update_layout(
-            title="Evolución de la Recaudación Total por Año",
-            xaxis_title="Año",
-            yaxis_title="Recaudación (Millones $)",
+            title="<b>Evolución de la Recaudación Total por Año</b>",
+            xaxis_title="<b>Año</b>",
+            yaxis_title="<b>Recaudación (Millones $)</b>",
             height=400,
-            hovermode='x unified'
+            hovermode='x unified',
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickformat='d', gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, (recaudacion_anual.values / 1e6).max() * 1.2]),
+            margin=dict(t=60, b=60, l=60, r=60)
         )
         
         st.plotly_chart(fig, width='stretch')
@@ -341,25 +365,41 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         # Gráfico de crecimiento interanual
         fig = go.Figure()
         
+        # Colorear según crecimiento positivo/negativo
+        colors = ['#27AE60' if val > 0 else '#E74C3C' for val in crecimiento_anual.values[1:]]
+        
         fig.add_trace(go.Bar(
             x=crecimiento_anual.index[1:],
             y=crecimiento_anual.values[1:],
             marker=dict(
-                color=crecimiento_anual.values[1:],
-                colorscale='RdYlGn',
-                showscale=False
+                color=colors,
+                line=dict(color='white', width=2)
             ),
-            text=[f"{val:.1f}%" for val in crecimiento_anual.values[1:]],
-            textposition='outside'
+            text=[f"<b>{val:.1f}%</b>" for val in crecimiento_anual.values[1:]],
+            textposition='outside',
+            textfont=dict(size=16, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>Crecimiento: %{y:.1f}%<extra></extra>'
         ))
         
-        fig.add_hline(y=0, line_dash='solid', line_color='black', line_width=1)
+        fig.add_hline(y=0, line_dash='solid', line_color='#000000', line_width=2)
+        
+        # Calcular rango del eje Y (solo de 0 hacia arriba)
+        max_val = crecimiento_anual.values[1:].max()
+        y_range = [0, max_val * 1.25]
         
         fig.update_layout(
-            title="Crecimiento Interanual (%)",
-            xaxis_title="Año",
-            yaxis_title="Variación (%)",
-            height=400
+            title="<b>Crecimiento Interanual (%)</b>",
+            xaxis_title="<b>Año</b>",
+            yaxis_title="<b>Variación (%)</b>",
+            height=400,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickformat='d', gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', zeroline=True, zerolinecolor='#000000', zerolinewidth=2, range=y_range),
+            margin=dict(t=60, b=60, l=60, r=60)
         )
         
         st.plotly_chart(fig, width='stretch')

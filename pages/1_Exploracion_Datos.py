@@ -102,12 +102,25 @@ if 'FLAG_ES_CERO' in df.columns:
         fig = px.pie(
             values=[tributan, no_tributan],
             names=['Tributan (0)', 'No Tributan (1)'],
-            title="Distribución: Contribuyentes que Tributan vs No Tributan",
+            title="<b>Distribución: Contribuyentes que Tributan vs No Tributan</b>",
             hole=0.4,
-            color_discrete_sequence=['#2ecc71', '#e74c3c']
+            color_discrete_sequence=['#27AE60', '#E74C3C']
         )
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        fig.update_layout(height=400, showlegend=True)
+        fig.update_traces(
+            textposition='outside',
+            textinfo='percent+label',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            marker=dict(line=dict(color='white', width=3))
+        )
+        fig.update_layout(
+            height=400,
+            showlegend=True,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            legend=dict(font=dict(size=14, color='#000000'))
+        )
         st.plotly_chart(fig, width='stretch')
     
     with col2:
@@ -115,14 +128,27 @@ if 'FLAG_ES_CERO' in df.columns:
         fig = px.bar(
             x=['Tributan (0)', 'No Tributan (1)'],
             y=[tributan, no_tributan],
-            title="Comparación de Contribuyentes",
+            title="<b>Comparación de Contribuyentes</b>",
             labels={'x': 'Categoría', 'y': 'Cantidad'},
             color=['Tributan', 'No Tributan'],
-            color_discrete_sequence=['#2ecc71', '#e74c3c'],
+            color_discrete_sequence=['#27AE60', '#E74C3C'],
             text=[tributan, no_tributan]
         )
-        fig.update_traces(texttemplate='%{text:,}', textposition='outside')
-        fig.update_layout(height=400, showlegend=False)
+        fig.update_traces(
+            texttemplate='<b>%{text:,}</b>',
+            textposition='outside',
+            textfont=dict(size=16, color='#000000', family='Arial Black')
+        )
+        fig.update_layout(
+            height=400,
+            showlegend=False,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, max(tributan, no_tributan) * 1.15])
+        )
         st.plotly_chart(fig, width='stretch')
     
     if ratio > 3:
@@ -154,36 +180,76 @@ if 'ANIO' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             y=recaudacion_anual['sum_millones'],
             mode='lines+markers',
             name='Recaudación Total',
-            line=dict(color='#3498db', width=3),
-            marker=dict(size=10)
+            line=dict(color='#2980B9', width=4),
+            marker=dict(size=14, line=dict(width=2, color='white'))
         ))
         
+        # Agregar anotaciones en cada punto
+        for i, row in recaudacion_anual.iterrows():
+            fig.add_annotation(
+                x=row['ANIO'],
+                y=row['sum_millones'],
+                text=f"<b>${row['sum_millones']:.1f}M</b>",
+                showarrow=False,
+                yshift=20,
+                font=dict(size=13, color='#000000', family='Arial Black'),
+                bgcolor='rgba(255,255,255,0.9)',
+                bordercolor='#2980B9',
+                borderwidth=2,
+                borderpad=4
+            )
+        
         fig.update_layout(
-            title="Recaudación Total por Año (Millones $)",
-            xaxis_title="Año",
-            yaxis_title="Recaudación (Millones $)",
+            title="<b>Recaudación Total por Año (Millones $)</b>",
+            xaxis_title="<b>Año</b>",
+            yaxis_title="<b>Recaudación (Millones $)</b>",
             height=400,
             hovermode='x unified',
-            xaxis=dict(tickformat='d')  # Sin separadores de miles
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickformat='d', gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, recaudacion_anual['sum_millones'].max() * 1.2])
         )
         
         st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de barras con cantidad de registros
-        fig = px.bar(
-            recaudacion_anual,
-            x='ANIO',
-            y='count',
-            title="Cantidad de Registros por Año",
-            labels={'ANIO': 'Año', 'count': 'Número de Registros'},
-            color='count',
-            color_continuous_scale='Viridis'
-        )
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=recaudacion_anual['ANIO'],
+            y=recaudacion_anual['count'],
+            marker=dict(
+                color=recaudacion_anual['count'],
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="<b>Registros</b>", font=dict(size=14, color='#000000')),
+                    tickfont=dict(size=12, color='#000000')
+                ),
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>{val:,}</b>" for val in recaudacion_anual['count']],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>%{y:,} registros<extra></extra>'
+        ))
         
         fig.update_layout(
+            title="<b>Cantidad de Registros por Año</b>",
+            xaxis_title="<b>Año</b>",
+            yaxis_title="<b>Número de Registros</b>",
             height=400,
-            xaxis=dict(tickformat='d')  # Sin separadores de miles
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickformat='d', gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, recaudacion_anual['count'].max() * 1.15])
         )
         st.plotly_chart(fig, width='stretch')
     
@@ -209,32 +275,67 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
     
     with col1:
         # Gráfico de barras horizontales
-        fig = px.bar(
-            recaudacion_canton.head(10),
-            y='CANTON',
-            x='TOTAL_RECAUDADO',
-            orientation='h',
-            title="Top 10 Cantones por Recaudación Total",
-            labels={'TOTAL_RECAUDADO': 'Recaudación Total ($)', 'CANTON': 'Cantón'},
-            text='PORCENTAJE',
-            color='TOTAL_RECAUDADO',
-            color_continuous_scale='Blues'
-        )
+        top_10 = recaudacion_canton.head(10)
+        # Colorear LOJA diferente
+        colors = ['#E74C3C' if canton == 'LOJA' else '#3498DB' for canton in top_10['CANTON']]
         
-        fig.update_traces(texttemplate='%{text}%', textposition='outside')
-        fig.update_layout(height=500)
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            y=top_10['CANTON'],
+            x=top_10['TOTAL_RECAUDADO'] / 1e6,
+            orientation='h',
+            text=[f"<b>{pct}%</b>" for pct in top_10['PORCENTAJE']],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            marker=dict(color=colors, line=dict(color='white', width=2)),
+            hovertemplate='<b>%{y}</b><br>$%{x:.1f}M (%{text})<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title="<b>Top 10 Cantones por Recaudación Total</b>",
+            xaxis_title="<b>Millones de Dólares ($)</b>",
+            yaxis_title="",
+            height=500,
+            yaxis={'categoryorder': 'total ascending'},
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(
+                gridcolor='#E8E8E8',
+                range=[0, (top_10['TOTAL_RECAUDADO'].max() / 1e6) * 1.22]
+            ),
+            margin=dict(l=120, r=150, t=60, b=60)
+        )
         st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Gráfico de pastel para top 5
-        fig = px.pie(
-            recaudacion_canton.head(5),
-            values='TOTAL_RECAUDADO',
-            names='CANTON',
-            title="Top 5 Cantones (% Recaudación)",
-            hole=0.4
+        top_5 = recaudacion_canton.head(5)
+        colors = ['#E74C3C' if c == 'LOJA' else '#3498DB' for c in top_5['CANTON']]
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=top_5['CANTON'],
+            values=top_5['TOTAL_RECAUDADO'],
+            hole=0.5,
+            marker=dict(colors=colors, line=dict(color='white', width=3)),
+            textinfo='percent+label',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            textposition='outside'
+        )])
+        
+        fig.update_layout(
+            title="<b>Top 5 Cantones<br>(% Recaudación)</b>",
+            height=500,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            showlegend=True,
+            legend=dict(font=dict(size=13, color='#000000')),
+            margin=dict(l=80, r=80, t=100, b=80)
         )
-        fig.update_layout(height=500)
         st.plotly_chart(fig, width='stretch')
     
     # Mostrar imagen guardada del notebook
@@ -276,10 +377,15 @@ if 'ACTIVIDAD_ECONOMICA' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             color=top_15.values,
             colorscale='Greens',
             showscale=True,
-            colorbar=dict(title="Millones $")
+            colorbar=dict(
+                title=dict(text="<b>Millones $</b>", font=dict(size=14, color='#000000')),
+                tickfont=dict(size=12, color='#000000')
+            ),
+            line=dict(color='white', width=1)
         ),
-        text=[f"{pct}%" for pct in top_15_pct],
+        text=[f"<b>{pct}%</b>" for pct in top_15_pct],
         textposition='outside',
+        textfont=dict(size=13, color='#000000', family='Arial Black'),
         hovertemplate='<b>%{y}</b><br>$%{x:.1f}M<br>%{text}<extra></extra>'
     ))
     
@@ -289,7 +395,13 @@ if 'ACTIVIDAD_ECONOMICA' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         yaxis_title="",
         height=600,
         yaxis={'categoryorder': 'total ascending'},
-        template='plotly_white'
+        template='plotly_white',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(size=13, color='#000000', family='Arial'),
+        title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
+        xaxis=dict(gridcolor='#E8E8E8'),
+        margin=dict(l=200, r=80)
     )
     st.plotly_chart(fig, width='stretch')
 else:
@@ -312,30 +424,62 @@ if 'TIPO_CONTRIBUYENTE' in df.columns and 'VALOR_RECAUDADO' in df.columns:
     
     with col1:
         # Gráfico de barras
-        fig = px.bar(
-            tipo_contrib,
-            x='TIPO_CONTRIBUYENTE',
-            y='TOTAL_RECAUDADO',
-            title="Recaudación Total por Tipo de Contribuyente",
-            labels={'TOTAL_RECAUDADO': 'Recaudación Total ($)', 'TIPO_CONTRIBUYENTE': 'Tipo'},
-            color='TOTAL_RECAUDADO',
-            color_continuous_scale='Oranges'
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=tipo_contrib['TIPO_CONTRIBUYENTE'],
+            y=tipo_contrib['TOTAL_RECAUDADO'] / 1e6,
+            marker=dict(
+                color=['#D35400', '#E67E22', '#F39C12'],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>${val/1e6:.1f}M</b>" for val in tipo_contrib['TOTAL_RECAUDADO']],
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>$%{y:.1f}M<extra></extra>'
+        ))
+        fig.update_layout(
+            title="<b>Recaudación Total por Tipo de Contribuyente</b>",
+            xaxis_title="<b>Tipo de Contribuyente</b>",
+            yaxis_title="<b>Millones de Dólares ($)</b>",
+            height=400,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, tipo_contrib['TOTAL_RECAUDADO'].max() / 1e6 * 1.15]),
+            xaxis=dict(tickangle=-15)
         )
-        fig.update_layout(height=400)
         st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Promedio por tipo
-        fig = px.bar(
-            tipo_contrib,
-            x='TIPO_CONTRIBUYENTE',
-            y='PROMEDIO_RECAUDADO',
-            title="Recaudación Promedio por Tipo de Contribuyente",
-            labels={'PROMEDIO_RECAUDADO': 'Promedio ($)', 'TIPO_CONTRIBUYENTE': 'Tipo'},
-            color='PROMEDIO_RECAUDADO',
-            color_continuous_scale='Purples'
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=tipo_contrib['TIPO_CONTRIBUYENTE'],
+            y=tipo_contrib['PROMEDIO_RECAUDADO'],
+            marker=dict(
+                color=['#6C3483', '#8E44AD', '#9B59B6'],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>${val:,.0f}</b>" for val in tipo_contrib['PROMEDIO_RECAUDADO']],
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>$%{y:,.0f}<extra></extra>'
+        ))
+        fig.update_layout(
+            title="<b>Recaudación Promedio por Tipo de Contribuyente</b>",
+            xaxis_title="<b>Tipo de Contribuyente</b>",
+            yaxis_title="<b>Promedio ($)</b>",
+            height=400,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, tipo_contrib['PROMEDIO_RECAUDADO'].max() * 1.15]),
+            xaxis=dict(tickangle=-15)
         )
-        fig.update_layout(height=400)
         st.plotly_chart(fig, width='stretch')
     
     # Mostrar imagen guardada
@@ -349,33 +493,152 @@ st.markdown("---")
 st.header("7. Distribución de Valores de Recaudación")
 
 if 'VALOR_RECAUDADO' in df.columns:
+    # Métricas resumen
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Promedio General", f"${df['VALOR_RECAUDADO'].mean():,.0f}")
+    with col2:
+        st.metric("Mediana", f"${df['VALOR_RECAUDADO'].median():,.0f}")
+    with col3:
+        st.metric("Valor Máximo", f"${df['VALOR_RECAUDADO'].max():,.0f}")
+    with col4:
+        contribuyentes_pagan = (df['VALOR_RECAUDADO'] > 0).sum()
+        st.metric("Contribuyentes que Pagan", f"{contribuyentes_pagan:,}")
+    
+    st.markdown("")
+    
+    # Crear rangos de recaudación para mejor comprensión
+    df_rangos = df[df['VALOR_RECAUDADO'] > 0].copy()
+    
+    def clasificar_monto(valor):
+        if valor <= 100:
+            return "Micro: $0-$100"
+        elif valor <= 1000:
+            return "Pequeño: $100-$1K"
+        elif valor <= 10000:
+            return "Mediano: $1K-$10K"
+        elif valor <= 100000:
+            return "Grande: $10K-$100K"
+        else:
+            return "Elite: >$100K"
+    
+    df_rangos['RANGO'] = df_rangos['VALOR_RECAUDADO'].apply(clasificar_monto)
+    
     col1, col2 = st.columns(2)
     
     with col1:
-        # Histograma
-        fig = px.histogram(
-            df,
-            x='VALOR_RECAUDADO',
-            nbins=50,
-            title="Distribución de Valores de Recaudación",
-            labels={'VALOR_RECAUDADO': 'Valor Recaudado ($)'},
-            marginal="box"
+        # Gráfico de barras por rangos
+        rangos_count = df_rangos['RANGO'].value_counts().reindex([
+            "Micro: $0-$100", 
+            "Pequeño: $100-$1K", 
+            "Mediano: $1K-$10K", 
+            "Grande: $10K-$100K", 
+            "Elite: >$100K"
+        ], fill_value=0)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=rangos_count.index,
+            y=rangos_count.values,
+            marker=dict(
+                color=['#27AE60', '#3498DB', '#F39C12', '#E67E22', '#E74C3C'],
+                line=dict(color='white', width=2)
+            ),
+            text=[f"<b>{val:,}</b>" for val in rangos_count.values],
+            textposition='outside',
+            textfont=dict(size=14, color='#000000', family='Arial Black'),
+            hovertemplate='<b>%{x}</b><br>%{y:,} contribuyentes<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title="<b>Distribución de Contribuyentes por Rango de Recaudación</b>",
+            xaxis_title="<b>Rango de Monto</b>",
+            yaxis_title="<b>Número de Contribuyentes</b>",
+            height=450,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickangle=-20, gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8', range=[0, rangos_count.max() * 1.15]),
+            margin=dict(t=80, b=100)
         )
-        fig.update_layout(height=400)
         st.plotly_chart(fig, width='stretch')
     
     with col2:
-        # Box plot por año si está disponible
-        if 'ANIO' in df.columns:
-            fig = px.box(
-                df,
-                x='ANIO',
-                y='VALOR_RECAUDADO',
-                title="Distribución de Recaudación por Año",
-                labels={'VALOR_RECAUDADO': 'Valor Recaudado ($)', 'ANIO': 'Año'}
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, width='stretch')
+        # Gráfico de pastel con % de recaudación por rango
+        rangos_suma = df_rangos.groupby('RANGO')['VALOR_RECAUDADO'].sum().reindex([
+            "Micro: $0-$100", 
+            "Pequeño: $100-$1K", 
+            "Mediano: $1K-$10K", 
+            "Grande: $10K-$100K", 
+            "Elite: >$100K"
+        ], fill_value=0)
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=rangos_suma.index,
+            values=rangos_suma.values,
+            hole=0.5,
+            marker=dict(
+                colors=['#27AE60', '#3498DB', '#F39C12', '#E67E22', '#E74C3C'],
+                line=dict(color='white', width=3)
+            ),
+            textinfo='percent+label',
+            textfont=dict(size=12, color='#000000', family='Arial Black'),
+            textposition='outside',
+            hovertemplate='<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>'
+        )])
+        
+        fig.update_layout(
+            title="<b>% del Monto Total<br>por Rango de Recaudación</b>",
+            height=450,
+            template='plotly_white',
+            paper_bgcolor='white',
+            font=dict(size=13, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            showlegend=False,
+            margin=dict(l=20, r=20, t=100, b=80)
+        )
+        st.plotly_chart(fig, width='stretch')
+    
+    # Análisis por año (si está disponible)
+    if 'ANIO' in df.columns:
+        st.markdown("### 📈 Evolución de Rangos por Año")
+        
+        # Crear tabla pivote
+        df_rangos_anio = df_rangos.groupby(['ANIO', 'RANGO'])['VALOR_RECAUDADO'].sum().reset_index()
+        
+        fig = px.bar(
+            df_rangos_anio,
+            x='ANIO',
+            y='VALOR_RECAUDADO',
+            color='RANGO',
+            title="<b>Recaudación Total por Rango a lo Largo del Tiempo</b>",
+            labels={'VALOR_RECAUDADO': 'Recaudación Total ($)', 'ANIO': 'Año'},
+            color_discrete_map={
+                "Micro: $0-$100": '#27AE60',
+                "Pequeño: $100-$1K": '#3498DB',
+                "Mediano: $1K-$10K": '#F39C12',
+                "Grande: $10K-$100K": '#E67E22',
+                "Elite: >$100K": '#E74C3C'
+            },
+            barmode='stack'
+        )
+        
+        fig.update_layout(
+            height=400,
+            template='plotly_white',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=14, color='#000000', family='Arial'),
+            title_font=dict(size=16, color='#2C3E50', family='Arial Black'),
+            xaxis=dict(tickformat='d', gridcolor='#E8E8E8'),
+            yaxis=dict(gridcolor='#E8E8E8'),
+            legend=dict(title="<b>Rango de Recaudación</b>", font=dict(size=12, color='#000000'))
+        )
+        st.plotly_chart(fig, width='stretch')
 
 # Footer
 st.markdown("---")
