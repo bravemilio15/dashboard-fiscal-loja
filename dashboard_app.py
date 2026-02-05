@@ -266,7 +266,8 @@ with col1:
             text=[f"<b>{pct}%</b>" for pct in rec_canton_pct],
             textposition='outside',
             textfont=dict(size=15, family='Arial Black', color='#000000'),
-            hovertemplate='<b>%{y}</b><br>Recaudación: $%{x:.1f}M<br>Porcentaje: %{text}<extra></extra>'
+            hovertemplate='<b>%{y}</b><br>Recaudación: $%{x:.1f}M<br>Porcentaje: %{text}<extra></extra>',
+            cliponaxis=False
         ))
         
         fig.update_layout(
@@ -280,11 +281,14 @@ with col1:
             paper_bgcolor='white',
             font=dict(size=14, color='#000000', family='Arial'),
             title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
-            xaxis=dict(gridcolor='#E8E8E8', range=[0, rec_canton.max() / 1e6 * 1.15]),
-            margin=dict(l=120, r=100, t=60, b=60)
+            xaxis=dict(
+                gridcolor='#E8E8E8',
+                range=[0, rec_canton.max() / 1e6 * 1.22]
+            ),
+            margin=dict(l=120, r=120, t=60, b=60)
         )
         
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
 
 with col2:
     # Gráfico de dona

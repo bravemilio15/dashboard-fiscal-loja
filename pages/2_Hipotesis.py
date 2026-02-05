@@ -73,49 +73,8 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
         else:
             st.warning("⚠️ Requiere análisis adicional")
     
-    # Visualizaciones
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Gráfico de barras horizontales
-        top_10_cantones = recaudacion_canton.head(10)
-        
-        fig = go.Figure()
-        
-        colors = ['#E74C3C' if i == 0 else '#3498DB' for i in range(len(top_10_cantones))]
-        
-        fig.add_trace(go.Bar(
-            y=top_10_cantones.index,
-            x=top_10_cantones.values / 1e6,
-            orientation='h',
-            marker=dict(color=colors, line=dict(color='white', width=2)),
-            text=[f"<b>{recaudacion_canton_pct[canton]}%</b>" for canton in top_10_cantones.index],
-            textposition='outside',
-            textfont=dict(size=14, color='#000000', family='Arial Black'),
-            hovertemplate='<b>%{y}</b><br>$%{x:.1f}M (%{text})<extra></extra>'
-        ))
-        
-        fig.update_layout(
-            title="<b>Top 10 Cantones por Recaudación Total</b>",
-            xaxis_title="<b>Millones de Dólares ($)</b>",
-            yaxis_title="",
-            height=500,
-            yaxis={'categoryorder': 'total ascending'},
-            template='plotly_white',
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(size=14, color='#000000', family='Arial'),
-            title_font=dict(size=18, color='#2C3E50', family='Arial Black'),
-            xaxis=dict(
-                gridcolor='#E8E8E8',
-                range=[0, (top_10_cantones.values.max() / 1e6) * 1.12]
-            ),
-            margin=dict(l=120, r=150, t=60, b=60),
-            uniformtext_minsize=8,
-            uniformtext_mode='hide'
-        )
-        
-        st.plotly_chart(fig, width='stretch')
+    # Visualización centrada
+    col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         # Gráfico de pastel
@@ -153,7 +112,7 @@ if 'CANTON' in df.columns and 'VALOR_RECAUDADO' in df.columns:
             legend=dict(orientation='h', yanchor='bottom', y=-0.15, xanchor='center', x=0.5),
             margin=dict(l=50, r=50, t=60, b=80)
         )
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
     
     # Conclusión
     st.markdown("### Conclusión")
